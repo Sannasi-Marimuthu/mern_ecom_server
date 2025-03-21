@@ -35,14 +35,14 @@ export const registerUser = async (req, res) => {
         await sendMail(email, "Welcome to SAN", message);
 
 
-        res.status(200).json({
+        return res.status(200).json({
             message: "otp send to your mail",
             activationToken,
         })
 
 
     } catch (error) {
-        res.status(500).json({
+        return res.status(500).json({
             message: error.message
         })
     }
@@ -71,12 +71,67 @@ export const verifyUser = async (req, res) => {
             contact: verify.user.contact
         })
 
-        res.status(200).json({
+        return res.status(200).json({
             message: "User Register Success"
         })
     } catch (error) {
-        res.status(500).json({
+        return res.status(500).json({
             message: error.message
+        })
+    }
+}
+
+
+//Login User
+export const loginUser = async(req,res) => {
+    try {
+        const {email, password} =  req.body;
+
+        //check user email address
+        const user = await User.findOne({email});
+        if(!user) {
+            return res.status(400).json({
+                message: "Invalid Credentials"
+            })
+        }
+
+        //check password
+        const matchPassword = await bcrypt.compare(password, user.password); 
+        if(!matchPassword) {
+            return res.status(400).json({
+                message: "Invalid Credentials"
+            })
+        }
+
+        //generate signed token
+        const token = jwt.sign({_id:user.id},process.env.JWT_SECRET,{expiresIn:"15d"});
+
+        //exclude the password field before sendin response
+        const {password:userPassword,...userDetails} = user.toObject()
+        return res.status(200).json({
+            message:"Welcome " + user.name,
+            token,
+            user:userDetails
+        })
+    } catch (error) {
+        return res.status(500).json({
+            message: error.message
+        })
+    }
+}
+
+//user profile
+
+export const myProfile = async (req,res) => {
+    try {
+        const user = await User.findById(req.user._id).select("-password");
+        return res.status(200).json({
+            user
+        })
+        
+    } catch (error) {
+        return res.status(500).json({
+            message:error.message
         })
     }
 }
